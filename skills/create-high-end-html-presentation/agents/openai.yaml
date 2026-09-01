@@ -1,0 +1,4 @@
+interface:
+  display_name: "High-End HTML Presentations"
+  short_description: "Create polished, interactive HTML slide decks"
+  default_prompt: "Use $create-high-end-html-presentations to build a polished, interactive HTML presentation from my content and brand reference."
