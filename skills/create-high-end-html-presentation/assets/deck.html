@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>{{DECK_TITLE}}</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232d1635'/%3E%3Cpath d='M17 18h30v7H17zm0 11h20v7H17zm0 11h26v7H17z' fill='%23fff'/%3E%3C/svg%3E">
+  <script src="./assets/echarts.min.js"></script>
+  <style>
+    :root {
+      --bg:#ffffff; --surface:#f3f1f4; --surface-2:#ebe5ed; --ink:#2d1635;
+      --muted:#665f68; --line:rgba(45,22,53,.17); --accent:#087e84;
+      --accent-2:#6b3c77; --warning:#9a728f; --negative:#a55262;
+      --mx:8vw; --ease:cubic-bezier(.22,.75,.2,1);
+    }
+    *{box-sizing:border-box}
+    html,body{width:100%;height:100%;margin:0;overflow:hidden}
+    body{background:var(--bg);color:var(--ink);font-family:Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
+    button{font:inherit;color:inherit}
+    :focus-visible{outline:3px solid color-mix(in srgb,var(--accent) 72%,white);outline-offset:3px}
+    .prototype-note{position:fixed;top:18px;right:22px;z-index:50;color:var(--muted);font-size:9px;letter-spacing:.16em;text-transform:uppercase}
+    .deck{position:relative;width:100%;height:100%;isolation:isolate}
+    .slide{position:absolute;inset:0;padding:12vh var(--mx) 9vh;display:grid;align-content:start;opacity:0;pointer-events:none;transform:translateY(18px);transition:opacity .58s var(--ease),transform .68s var(--ease);background:var(--bg)}
+    .slide.active{opacity:1;pointer-events:auto;transform:none;z-index:2}
+    .slide.exit{transform:translateY(-14px)}
+    .slide::before{content:"PRESENTATION";position:absolute;left:var(--mx);right:var(--mx);top:4.2vh;padding-bottom:13px;border-bottom:1px solid var(--line);color:var(--warning);font-size:9px;font-weight:700;letter-spacing:.18em}
+    h1,h2,h3,p{margin:0}
+    h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:400;letter-spacing:-.035em}
+    h1{font-size:clamp(54px,6.4vw,100px);line-height:.98;max-width:980px}
+    h2{font-size:clamp(38px,4.3vw,68px);line-height:1.03;max-width:990px}
+    h3{font-size:clamp(22px,2vw,32px)}
+    .kicker{color:var(--accent);font-size:10px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;margin-bottom:14px}
+    .accent{color:var(--accent)}
+    .lead{margin-top:24px;max-width:720px;color:var(--muted);font-size:clamp(17px,1.35vw,22px);line-height:1.5}
+    .title-slide{align-content:center}
+    .title-meta{display:flex;gap:22px;align-items:center;margin-bottom:28px;color:var(--muted);font-size:13px}
+    .title-meta::before{content:"";width:46px;height:1px;background:var(--accent)}
+    .metric-line{display:grid;grid-template-columns:repeat(3,1fr);gap:4vw;margin-top:8vh}
+    .metric{border-top:1px solid var(--line);padding-top:20px}
+    .metric b{display:block;font-family:Georgia,"Times New Roman",serif;font-size:clamp(52px,6vw,90px);font-weight:400;line-height:.9}
+    .metric span{display:block;margin-top:16px;color:var(--muted);font-size:16px;line-height:1.4}
+    .chart-layout{display:grid;grid-template-columns:.35fr .65fr;gap:5vw;align-items:end;margin-top:4vh;min-height:48vh}
+    .chart-copy{border-right:1px solid var(--line);padding-right:4vw}
+    .chart-copy p{margin-top:18px;color:var(--muted);font-size:15px;line-height:1.5}
+    .chart{width:100%;height:42vh}
+    .chart-figure{margin:0;min-width:0}
+    .chart-figure figcaption{margin-top:8px;color:var(--muted);font-size:11px;line-height:1.4}
+    .chart-fallback{height:100%;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted);font-size:13px}
+    .split-field{display:grid;grid-template-columns:minmax(0,.4fr) minmax(0,.6fr);gap:5vw;align-items:center;margin-top:5vh;min-height:46vh}
+    .split-field>*{min-width:0}
+    .comparison-field{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;margin-top:5vh;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .comparison-field>*{min-width:0;padding:4vh 3vw}
+    .comparison-field>*+*{border-left:1px solid var(--line)}
+    .diagram-stage{min-width:0;min-height:48vh;margin-top:4vh;display:grid;place-items:center}
+    .quote-stage{max-width:980px;margin-top:7vh;font-family:Georgia,"Times New Roman",serif;font-size:clamp(34px,4.2vw,66px);line-height:1.08;letter-spacing:-.035em}
+    .fragment{opacity:.12;transform:translateY(12px);transition:opacity .5s var(--ease),transform .5s var(--ease)}
+    .fragment.visible{opacity:1;transform:none}
+    .close-slide{align-content:center;background:var(--surface)}
+    .close-slide .rule{width:100%;height:2px;background:var(--accent);margin-top:38px}
+    .slide-no{position:absolute;right:var(--mx);bottom:4vh;color:var(--muted);font-size:10px;letter-spacing:.12em}
+    .controls{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:80;display:flex;align-items:center;gap:8px;padding:7px;background:rgba(45,22,53,.94);color:#fff;border-radius:999px;box-shadow:0 12px 34px rgba(45,22,53,.18)}
+    .controls button{width:34px;height:34px;border:0;border-radius:50%;background:transparent;cursor:pointer;color:rgba(255,255,255,.72)}
+    .controls button:hover{background:rgba(255,255,255,.1);color:#fff}
+    .readout{min-width:68px;text-align:center;font-size:11px;letter-spacing:.1em;color:rgba(255,255,255,.72)}
+    .progress{position:fixed;left:0;right:0;bottom:0;z-index:70;height:2px;background:rgba(45,22,53,.08)}
+    .progress i{display:block;width:0;height:100%;background:var(--accent);transition:width .55s var(--ease)}
+    body[data-posture="cinematic"]{--bg:#161019;--surface:#231629;--surface-2:#38213f;--ink:#fff;--muted:#c9becb;--line:rgba(255,255,255,.16)}
+    body[data-posture="cinematic"] .slide{background:var(--bg)}
+    @media(max-width:900px){:root{--mx:6vw}.slide{padding-top:11vh}.metric-line{grid-template-columns:1fr;gap:2vh}.chart-layout,.split-field{grid-template-columns:1fr}.chart-copy{border-right:0;border-bottom:1px solid var(--line);padding-bottom:18px}.chart{height:30vh}.comparison-field{grid-template-columns:1fr}.comparison-field>*+*{border-left:0;border-top:1px solid var(--line)}}
+    @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}}
+  </style>
+</head>
+<body data-posture="{{DEFAULT_POSTURE}}">
+  <div class="prototype-note">Prototype · illustrative where noted</div>
+  <main class="deck" id="deck">
+    <section class="slide title-slide active" id="slide-1" aria-labelledby="slide-1-title">
+      <div class="title-meta">Audience briefing <span>Subject</span></div>
+      <h1 id="slide-1-title">{{DECK_TITLE}}.<br><span class="accent">A clear second line.</span></h1>
+      <p class="lead">Replace this sentence with the concise promise of the presentation.</p>
+      <span class="slide-no">01</span>
+    </section>
+    <section class="slide" id="slide-2" aria-labelledby="slide-2-title">
+      <div class="kicker">Evidence</div>
+      <h2 id="slide-2-title">A claim supported by<br>three meaningful measures.</h2>
+      <div class="metric-line">
+        <div class="metric fragment"><b>3</b><span>First sourced measure</span></div>
+        <div class="metric fragment"><b>12</b><span>Second sourced measure</span></div>
+        <div class="metric fragment"><b>5h</b><span>Illustrative only</span></div>
+      </div>
+      <span class="slide-no">02</span>
+    </section>
+    <section class="slide" id="slide-3" aria-labelledby="slide-3-title">
+      <div class="kicker">Analytical evidence</div>
+      <h2 id="slide-3-title">Show the pattern.<br><span class="accent">Explain why it matters.</span></h2>
+      <div class="chart-layout">
+        <div class="chart-copy"><h3>Illustrative trend</h3><p>Keep the chart subordinate to the claim and label invented data clearly.</p></div>
+        <figure class="chart-figure">
+          <div class="chart" id="exampleChart" role="img" aria-label="Illustrative rising quarterly trend ending at 81"></div>
+          <figcaption>Illustrative values · replace with sourced figures and a source line.</figcaption>
+        </figure>
+      </div>
+      <span class="slide-no">03</span>
+    </section>
+    <section class="slide close-slide" id="slide-4" aria-labelledby="slide-4-title">
+      <div class="kicker">Direction</div>
+      <h2 id="slide-4-title">Resolve the opening.<br><span class="accent">State the next move.</span></h2>
+      <p class="lead">End with the implication, recommendation, or decision required.</p>
+      <div class="rule"></div>
+      <span class="slide-no">04</span>
+    </section>
+  </main>
+  <nav class="controls" aria-label="Presentation controls">
+    <button id="previous" type="button" aria-label="Previous slide">←</button>
+    <span class="readout" id="readout" aria-live="polite">01 / 04</span>
+    <button id="next" type="button" aria-label="Reveal next item or advance slide">→</button>
+  </nav>
+  <div class="progress" aria-hidden="true"><i id="progressBar"></i></div>
+  <script>
+    (() => {
+      const slides = [...document.querySelectorAll('.slide')];
+      const readout = document.getElementById('readout');
+      const progress = document.getElementById('progressBar');
+      let index = Math.max(0, Math.min(slides.length - 1, Number(location.hash.replace('#/','')) || 0));
+      const pad = n => String(n).padStart(2,'0');
+      function activate(next, updateHash=true){
+        next = Math.max(0, Math.min(slides.length - 1, next));
+        slides.forEach((slide,i)=>{slide.classList.toggle('active',i===next);slide.classList.toggle('exit',i<next)});
+        index = next;
+        readout.textContent = `${pad(index+1)} / ${pad(slides.length)}`;
+        progress.style.width = `${((index+1)/slides.length)*100}%`;
+        if(updateHash) history.replaceState(null,'',`${location.pathname}${location.search}#/${index}`);
+        window.exampleChart?.resize();
+      }
+      function revealOrAdvance(){
+        const fragment = slides[index].querySelector('.fragment:not(.visible)');
+        if(fragment) fragment.classList.add('visible'); else activate(index+1);
+      }
+      document.getElementById('previous').onclick=()=>activate(index-1);
+      document.getElementById('next').onclick=revealOrAdvance;
+      addEventListener('hashchange',()=>activate(Number(location.hash.replace('#/',''))||0,false));
+      addEventListener('keydown',event=>{
+        if(/INPUT|TEXTAREA/.test(event.target.tagName)||event.target.isContentEditable)return;
+        if(event.key==='ArrowRight'||event.key==='PageDown'||event.key===' '){event.preventDefault();revealOrAdvance()}
+        if(event.key==='ArrowLeft'||event.key==='PageUp'){event.preventDefault();activate(index-1)}
+        if(event.key.toLowerCase()==='f')document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen?.();
+      });
+      if(window.echarts){
+        const host=document.getElementById('exampleChart');
+        const css=getComputedStyle(document.body),colour=name=>css.getPropertyValue(name).trim();
+        window.exampleChart=echarts.init(host,null,{renderer:'canvas'});
+        exampleChart.setOption({
+          animationDuration:900,
+          grid:{left:14,right:14,top:30,bottom:32,containLabel:true},
+          tooltip:{trigger:'axis'},
+          xAxis:{type:'category',boundaryGap:false,data:['Q1','Q2','Q3','Q4','Today'],axisTick:{show:false},axisLine:{lineStyle:{color:colour('--line')}},axisLabel:{color:colour('--muted')}},
+          yAxis:{type:'value',show:false},
+          series:[{type:'line',smooth:.4,symbolSize:7,data:[42,51,49,68,81],lineStyle:{width:2.5,color:colour('--accent')},itemStyle:{color:colour('--bg'),borderColor:colour('--accent'),borderWidth:2},areaStyle:{opacity:.18,color:colour('--accent')}}]
+        });
+      }else{
+        document.getElementById('exampleChart').innerHTML='<div class="chart-fallback">Add assets/echarts.min.js to enable this chart.</div>';
+      }
+      activate(index,false);
+    })();
+  </script>
+</body>
+</html>
